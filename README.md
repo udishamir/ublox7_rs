@@ -55,7 +55,7 @@ https://docs.ros.org/en/iron/p/ublox_ubx_msgs/interfaces/msg/UBXNavPosLLH.html
 | 20     | hAcc   | U4   | Horizontal accuracy estimate   |
 | 24     | vAcc   | U4   | Vertical accuracy estimate     |
 
-Important: check your system system architecture for endinanness.
+Important: check your system architecture for endinanness.
 
 ```rust
 let lat = i32::from_le_bytes([payload[8], payload[9], payload[10], payload[11]]) as f64 * 1e-7;
@@ -65,8 +65,8 @@ println!("Latitude: {:.7}, Longitude: {:.7}", lat, lon);
 
 ## Project Structure
 
-- `lib.rs` + handles serial I/O, UBX protocol frame construction, checksum validation, and payload parsing.
-- `main.rs` + CLI entry point for polling UBX data and printing results.
++ `lib.rs` + handles serial I/O, UBX protocol frame construction, checksum validation, and payload parsing.
++ `main.rs` + CLI entry point for polling UBX data and printing results.
 
 ## License
 
