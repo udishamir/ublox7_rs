@@ -100,7 +100,7 @@ pub fn open_serial(
 
     https://en.wikipedia.org/wiki/Fletcher%27s_checksum
 
-    The purpose is preventing data corruption corruption. Im using the 8 bit up to 255.
+    The purpose is preventing data corruption. Im using the 8 bit up to 255.
     Fletcher algorithm supports 8, 16, 32 and 64 bits.
 
     This algorithm is considered weak, it is good enough for low power devices.
