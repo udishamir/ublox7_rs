@@ -9,7 +9,7 @@ As part of my surrounding sensing project, i have decided to write drivers for s
 
 The UBX protocol is a binary communication protocol used by u-blox GPS modules. Unlike NMEA, which is human-readable, UBX is a compact and efficient binary format designed for precise control, polling, and high-frequency data streaming.
 
-Manufacture: https://www.u-blox.com/en/about
+Manufacture: https://www.u-blox.com/en/about<br>
 spec: https://content.u-blox.com/sites/default/files/products/documents/u-blox7-V14_ReceiverDescriptionProtocolSpec_%28GPS.G7-SW-12001%29_Public.pdf
 
 ### UBX Protocol Subset Message Structure
