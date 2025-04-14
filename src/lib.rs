@@ -103,7 +103,7 @@ pub fn open_serial(
     The purpose is preventing data corruption. Im using the 8 bit up to 255.
     Fletcher algorithm supports 8, 16, 32 and 64 bits.
 
-    This algorithm is considered weak, it is good enough for low power devices.
+    This algorithm is considered weak while it is good enough.
     It seems useful in low-power, low-bandwidth embedded systems or legacy protocols.
 */
 
