@@ -106,17 +106,17 @@ pub fn open_serial(
     This algorithm is considered weak, it is good enough for low power devices.
     It seems useful in low-power, low-bandwidth embedded systems or legacy protocols.
 */
-fn calc_ubx_checksum(data: &[u8]) -> (u8, u8) {
-    let mut ck_a: u8 = 0;
-    let mut ck_b: u8 = 0;
 
-    for &b in data {
-        ck_a = ck_a.wrapping_add(b);
+fn ubx_checksum(data: &[u8]) -> (u8, u8) {
+    let mut ck_a = 0u8;
+    let mut ck_b = 0u8;
+    for byte in data {
+        ck_a = ck_a.wrapping_add(*byte);
         ck_b = ck_b.wrapping_add(ck_a);
     }
-
     (ck_a, ck_b)
 }
+
 // Ublox propietary protocol
 pub fn send_ubx_command(
     port: &mut dyn SerialPort,
@@ -135,7 +135,7 @@ pub fn send_ubx_command(
 
     message.extend_from_slice(payload);
 
-    let (ck_a, ck_b) = calc_ubx_checksum(&message[2..]);
+    let (ck_a, ck_b) = ubx_checksum(&message[2..]);
     message.push(ck_a);
     message.push(ck_b);
 
@@ -174,14 +174,4 @@ fn parse_ubx_message(data: &[u8]) -> Option<UbxMessage> {
     } else {
         None
     }
-}
-
-fn ubx_checksum(data: &[u8]) -> (u8, u8) {
-    let mut ck_a = 0u8;
-    let mut ck_b = 0u8;
-    for byte in data {
-        ck_a = ck_a.wrapping_add(*byte);
-        ck_b = ck_b.wrapping_add(ck_a);
-    }
-    (ck_a, ck_b)
 }
