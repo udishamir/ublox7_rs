@@ -69,6 +69,61 @@ pub fn parse_nav_posllh(payload: &[u8]) -> Option<Position> {
     })
 }
 
+fn svid_to_constellation(svid: u8) -> &'static str {
+    match svid {
+        1..=32 => "GPS",
+        33..=64 => "SBAS",
+        65..=96 => "Galileo",
+        120..=158 => "SBAS/WAAS",
+        159..=163 => "BeiDou",
+        211..=246 => "GLONASS",
+        _ => "Unknown",
+    }
+}
+
+pub fn parse_nav_svinfo(payload: &[u8]) {
+    if payload.len() < 8 {
+        println!("Payload too short for UBX-NAV-SVINFO");
+        return;
+    }
+
+    let num_ch = payload[4] as usize;
+
+    println!("\n===== UBX-NAV-SVINFO =====");
+    println!("Number of channels: {}\n", num_ch);
+
+    for i in 0..num_ch {
+        let base = 8 + i * 12;
+        if base + 12 > payload.len() {
+            println!("Truncated satellite block");
+            break;
+        }
+
+        let chn = payload[base];
+        let svid = payload[base + 1];
+        let flags = payload[base + 2];
+        let quality = payload[base + 3];
+        let cno = payload[base + 4]; // carrier-to-noise ratio
+        let elev = payload[base + 5] as i8;
+        let azim = i16::from_le_bytes([payload[base + 6], payload[base + 7]]);
+        let pr_res = i32::from_le_bytes([
+            payload[base + 8],
+            payload[base + 9],
+            payload[base + 10],
+            payload[base + 11],
+        ]);
+
+        println!("{}", svid_to_constellation(svid));
+
+        println!(
+            "CH: {:2} | SVID: {:3} | C/N₀: {:2} dBHz | Elv: {:3}° | Azim: {:4}° | Quality: {} | Flags: 0x{:02X} | PR Res: {}",
+            chn, svid, cno, elev, azim, quality, flags, pr_res
+        );
+    }
+
+    println!("======================================\n");
+}
+
 pub fn print_position(pos: &Position) {
     println!("\n===== UBX NAV-POSLLH Parsed Position =====");
     println!("Latitude:  {:.7} °", pos.lat);
@@ -103,7 +158,7 @@ pub fn open_serial(
     The purpose is preventing data corruption. Im using the 8 bit up to 255.
     Fletcher algorithm supports 8, 16, 32 and 64 bits.
 
-    This algorithm is considered weak while it is good enough.
+    This algorithm is considered weak, it is good enough for low power devices.
     It seems useful in low-power, low-bandwidth embedded systems or legacy protocols.
 */
 
