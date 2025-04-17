@@ -69,7 +69,7 @@ pub fn parse_nav_posllh(payload: &[u8]) -> Option<Position> {
     })
 }
 
-fn svid_to_constellation(svid: u8) -> &'static str {
+pub fn svid_to_constellation(svid: u8) -> &'static str {
     match svid {
         1..=32 => "GPS",
         33..=64 => "SBAS",

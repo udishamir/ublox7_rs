@@ -3,22 +3,6 @@ use std::thread::sleep;
 use std::time::Duration;
 use ublox7::{open_serial, read_ubx_response, send_ubx_command};
 
-fn svid_to_constellation(svid: u8) -> &'static str {
-    // https://content.u-blox.com/sites/default/files/products/documents/u-blox7-V14_ReceiverDescriptionProtocolSpec_%28GPS.G7-SW-12001%29_Public.pdf
-    // 4.3 Summary
-    match svid {
-        1..=32 => "GPS",
-        33..=64 => "SBAS (Satellite Based Augmentation Systems)",
-        65..=96 => "Galileo",
-        120..=158 => {
-            "SBAS/WAAS (Satellite Based Augmentation Systems / Wide Area Augmentation System)"
-        }
-        159..=163 => "BeiDou (China National Space Administration)",
-        211..=246 => "GLONASS (Russian satellite navigation system)",
-        _ => "Unknown",
-    }
-}
-
 fn parse_nav_svinfo(payload: &[u8]) {
     if payload.len() < 8 {
         println!("Payload too short for UBX-NAV-SVINFO");
@@ -59,7 +43,7 @@ fn parse_nav_svinfo(payload: &[u8]) {
         */
 
         let svid = payload[base + 1];
-        println!("Channel: {} {}", i, svid_to_constellation(svid));
+        println!("Channel: {} {}", i, ublox7::svid_to_constellation(svid));
     }
 
     println!("======================================\n");
@@ -142,8 +126,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     send_ubx_command(&mut *port, class, id, &payload)?;
     println!("Command sent. Waiting for UBX response...");
 
-    sleep(Duration::from_millis(300)); // Let device respond
-    let response = read_ubx_response(&mut *port).ok_or("No UBX response received")?;
+    // Wait for one second
+    sleep(Duration::from_millis(1000)); // Let device respond
+    //
+    let response = read_ubx_response(&mut *port).ok_or("\
+        No UBX response received. Ensure that your GPS receiver has a clear line of sight to the sky."
+    )?;
 
     if response.class == 0x01 && response.id == 0x02 && response.payload.len() >= 28 {
         let payload = &response.payload;
