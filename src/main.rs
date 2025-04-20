@@ -14,33 +14,32 @@ fn parse_nav_svinfo(payload: &[u8]) {
     println!("\n===== UBX-NAV-SVINFO =====");
     println!("Number of channels: {}\n", num_ch);
 
+    #[cfg(debug_assertions)]
     for i in 0..num_ch {
         let base = 8 + i * 12;
         if base + 12 > payload.len() {
             println!("Truncated satellite block");
             break;
         }
-        /*
-         * Debug
-                let chn = payload[base];
-                let svid = payload[base + 1];
-                let flags = payload[base + 2];
-                let quality = payload[base + 3];
-                let cno = payload[base + 4]; // carrier-to-noise ratio
-                let elev = payload[base + 5] as i8;
-                let azim = i16::from_le_bytes([payload[base + 6], payload[base + 7]]);
-                let pr_res = i32::from_le_bytes([
-                    payload[base + 8],
-                    payload[base + 9],
-                    payload[base + 10],
-                    payload[base + 11],
-                ]);
 
-                println!(
-                    "CH: {:2} | SVID: {:3} | C/N₀: {:2} dBHz | Elv: {:3}° | Azim: {:4}° | Quality: {} | Flags: 0x{:02X} | PR Res: {}",
-                    chn, svid, cno, elev, azim, quality, flags, pr_res
-                );
-        */
+        let chn = payload[base];
+        let svid = payload[base + 1];
+        let flags = payload[base + 2];
+        let quality = payload[base + 3];
+        let cno = payload[base + 4]; // carrier-to-noise ratio
+        let elev = payload[base + 5] as i8;
+        let azim = i16::from_le_bytes([payload[base + 6], payload[base + 7]]);
+        let pr_res = i32::from_le_bytes([
+            payload[base + 8],
+            payload[base + 9],
+            payload[base + 10],
+            payload[base + 11],
+        ]);
+
+        println!(
+            "CH: {:2} | SVID: {:3} | C/N₀: {:2} dBHz | Elv: {:3}° | Azim: {:4}° | Quality: {} | Flags: 0x{:02X} | PR Res: {}",
+            chn, svid, cno, elev, azim, quality, flags, pr_res
+        );
 
         let svid = payload[base + 1];
         println!("Channel: {} {}", i, ublox7::svid_to_constellation(svid));
@@ -112,6 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Poll UBX-NAV-SVINFO
     send_ubx_command(&mut *port, 0x01, 0x30, &[])?;
 
+    // Attempting to retrieve vehichle (satelitte) information such as: {gps, glonass, beiduo}
     if let Some(sat_response_svinfo) = read_ubx_response(&mut *port) {
         if sat_response_svinfo.class == 0x01 && sat_response_svinfo.id == 0x30 {
             parse_nav_svinfo(&sat_response_svinfo.payload);
