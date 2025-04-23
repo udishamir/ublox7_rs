@@ -1,7 +1,7 @@
 use serialport::SerialPort;
-use std::thread::sleep;
-use std::time::Duration;
 use ublox7::{open_serial, read_ubx_response, send_ubx_command};
+
+const MAX_RETRY: u8 = 10;
 
 fn parse_nav_svinfo(payload: &[u8]) {
     if payload.len() < 8 {
@@ -103,38 +103,36 @@ pub fn get_sat_info(port: &mut dyn SerialPort) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // In this example im not handling timeouts, you should make sure the device is ready before
-    // attempting reading from serial, if you are getting timeout retry, serial is slow
-    let mut port = open_serial("/dev/ttyACM0", 19200)?;
-
-    // Poll UBX-NAV-SVINFO
-    send_ubx_command(&mut *port, 0x01, 0x30, &[])?;
-
-    // Attempting to retrieve vehichle (satelitte) information such as: {gps, glonass, beiduo}
-    if let Some(sat_response_svinfo) = read_ubx_response(&mut *port) {
-        if sat_response_svinfo.class == 0x01 && sat_response_svinfo.id == 0x30 {
-            parse_nav_svinfo(&sat_response_svinfo.payload);
+fn get_ublox7_message(
+    mut port: Box<dyn SerialPort>,
+    class: u8,
+    id: u8,
+    payload: [u8; 0],
+) -> Result<(Box<dyn SerialPort>, ublox7::UbxMessage), Box<dyn SerialPort>> {
+    for i in 1..=MAX_RETRY {
+        if let Err(e) = send_ubx_command(&mut *port, class, id, &payload) {
+            println!("Error: {}", e);
+            continue;
+        }
+        if let Some(response) = read_ubx_response(&mut *port) {
+            println!(
+                "Got response from Ublox7, Attempt: {}/{} Class: {}, Id: {}",
+                i, MAX_RETRY, response.class, response.id
+            );
+            // return
+            if response.class == class && response.id == id {
+                return Ok((port, response));
+            }
         }
     }
 
-    // Poll NAV-POSLLH (Position, Longitude/Latitude)
-    let class = 0x01;
-    let id = 0x02;
-    let payload: [u8; 0] = []; // set to 0
+    println!("Error: no response after: {} retries", MAX_RETRY);
+    Err(port)
+}
 
-    send_ubx_command(&mut *port, class, id, &payload)?;
-    println!("Command sent. Waiting for UBX response...");
-
-    // Wait for one second
-    sleep(Duration::from_millis(1000)); // Let device respond
-    //
-    let response = read_ubx_response(&mut *port).ok_or("\
-        No UBX response received. Ensure that your GPS receiver has a clear line of sight to the sky."
-    )?;
-
-    if response.class == 0x01 && response.id == 0x02 && response.payload.len() >= 28 {
-        let payload = &response.payload;
+fn parse_ublox7_data(ubx_message: ublox7::UbxMessage) {
+    if ubx_message.class == 0x01 && ubx_message.id == 0x02 && ubx_message.payload.len() >= 28 {
+        let payload = &ubx_message.payload;
         let i_tow = u32::from_le_bytes(payload[0..4].try_into().unwrap());
         let lon = i32::from_le_bytes(payload[4..8].try_into().unwrap()) as f64 / 1e7;
         let lat = i32::from_le_bytes(payload[8..12].try_into().unwrap()) as f64 / 1e7;
@@ -152,6 +150,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Height (MSL): {:.3} m", height_msl);
         println!("  Horizontal Accuracy: {:.3} m", h_acc);
         println!("  Vertical Accuracy: {:.3} m", v_acc);
+    }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // In this example im not handling timeouts, you should make sure the device is ready before
+    // attempting reading from serial, if you are getting timeout retry, serial is slow
+    let mut port = open_serial("/dev/ttyACM0", 19200)?;
+
+    // Attempting to retrieve vehichle (satelitte) information such as: {gps, glonass, beiduo}
+    if let Some(sat_response_svinfo) = read_ubx_response(&mut *port) {
+        if sat_response_svinfo.class == 0x01 && sat_response_svinfo.id == 0x30 {
+            parse_nav_svinfo(&sat_response_svinfo.payload);
+        }
+    }
+
+    let class = 0x01;
+    let id = 0x02;
+    let payload: [u8; 0] = []; // set to 0
+
+    println!("Command sent. Waiting for UBX response...");
+
+    let ublox7_response = get_ublox7_message(port, class, id, payload);
+    match ublox7_response {
+        Ok(ubx_message) => {
+            parse_ublox7_data(ubx_message.1);
+        }
+        Err(e) => {
+            println!("Error, failed communicating with Ublox7: {:?}", e);
+        }
     }
 
     Ok(())
